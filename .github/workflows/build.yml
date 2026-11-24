@@ -52,10 +52,19 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install deps
+      - name: Install core deps
         run: |
           python -m pip install --upgrade pip
-          pip install pillow svglib reportlab rlpycairo pyinstaller
+          python -m pip install pillow
+
+      - name: Install SVG deps
+        run: python -m pip install svglib reportlab rlpycairo
+
+      - name: Install PyInstaller
+        run: python -m pip install pyinstaller
+
+      - name: Verify imports
+        run: python -c "import PIL, svglib, reportlab, rlPyCairo, PyInstaller; print('deps ok')"
 
       - name: Self test (exercises the SVG logo path)
         shell: pwsh
