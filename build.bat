@@ -9,7 +9,7 @@ python src\make_web.py || goto :err
 echo.
 echo [2/2] 打包 exe ...
 python -m PyInstaller --onefile -w --name "EazyWatermarker" ^
-  --add-data "logos;logos" ^
+  --add-data "%CD%\logos;logos" ^
   --collect-all svglib --collect-all rlPyCairo ^
   --exclude-module numpy --exclude-module scipy --exclude-module pandas ^
   --exclude-module matplotlib --exclude-module cv2 --exclude-module IPython ^
