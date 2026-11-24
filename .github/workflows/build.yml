@@ -86,3 +86,22 @@ jobs:
             dist/EazyWatermarker.exe
             dist/web.zip
           generate_release_notes: true
+          body: |
+            ## 下载
+
+            | 文件 | 说明 |
+            |---|---|
+            | `EazyWatermarker.exe` | Windows 免安装版（约 24 MB）。首次运行会在同目录生成 `logos\` |
+            | `web.zip` | 解压后双击 `index.html`，浏览器里直接用，完全离线 |
+
+            ## 关于品牌标志
+
+            仓库**不附带**任何品牌标志（商标问题）。三种选择：
+
+            1. 不下载 —— 自动用文字字标（SONY / Canon / FUJIFILM …），版式不变
+            2. 跑脚本：`python src/fetch_logos.py --all`（或 `--source jsdelivr`，国内可直连）
+            3. 自己把 SVG/PNG 放进 `logos\`，命名规则见 `logos/README.md`
+
+            ## 快速上手
+
+            双击 exe → 左侧加照片 → 右侧调白边/字号/标识 → 导出到原图旁 `framed\`。
