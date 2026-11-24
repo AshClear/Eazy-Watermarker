@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 构建产物
+build/
+dist/
+*.spec
+*.exe
+*.pyz
+
+# 品牌标志（商标，不随仓库分发）
+logos/*.svg
+logos/*.png
+logos/*.jpg
+logos/*.jpeg
+logos/*.webp
+
+# 本地临时文件
+.tmp/
+out/
+framed/
+*.log
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

@@ -1,0 +1,6 @@
+# 运行所需
+Pillow>=10.0
+# SVG 标志栅格化（只用 PNG/JPG 标志的话可以不装）
+svglib>=1.5
+reportlab>=4.0
+rlPyCairo>=0.2

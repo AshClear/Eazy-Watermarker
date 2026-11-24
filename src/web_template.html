@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>品牌水印 · 离线版</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#f6f6f4; --panel:#fff; --line:#e3e3df; --ink:#1a1a1a; --dim:#7c7c78; --accent:#111;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:14px/1.5 "Microsoft YaHei UI","Segoe UI",system-ui,sans-serif;
+    display:flex; flex-direction:column;
+  }
+  header{
+    display:flex; align-items:center; gap:12px;
+    padding:12px 18px; background:#fff; border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:15px; margin:0; letter-spacing:.02em; font-weight:600}
+  header .tag{font-size:12px; color:var(--dim)}
+  main{flex:1; display:flex; min-height:0}
+  .left{width:230px; border-right:1px solid var(--line); background:#fff; display:flex; flex-direction:column}
+  .left .hd{padding:10px 12px; font-weight:600; font-size:13px; border-bottom:1px solid var(--line)}
+  .files{flex:1; overflow:auto}
+  .file{padding:8px 12px; font-size:12.5px; cursor:pointer; border-bottom:1px solid #f2f2ef; display:flex; justify-content:space-between; gap:6px}
+  .file:hover{background:#fafaf8}
+  .file.on{background:#111; color:#fff}
+  .file small{color:#9a9a96}
+  .file.on small{color:#bbb}
+  .stage{flex:1; display:flex; flex-direction:column; min-width:0; padding:14px}
+  .canvas-wrap{flex:1; display:flex; align-items:center; justify-content:center; min-height:0;
+    background:
+      linear-gradient(45deg,#ecece8 25%,transparent 25%,transparent 75%,#ecece8 75%),
+      linear-gradient(45deg,#ecece8 25%,transparent 25%,transparent 75%,#ecece8 75%);
+    background-size:18px 18px; background-position:0 0,9px 9px; border:1px solid var(--line)}
+  #preview{max-width:100%; max-height:100%; display:block}
+  .empty{color:#9a9a96; font-size:13px}
+  .status{padding-top:8px; font-size:12px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .right{width:320px; background:#fff; border-left:1px solid var(--line); overflow:auto; padding:12px 14px 24px}
+  .grp{margin-bottom:14px}
+  .grp>h2{font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:#8a8a86; margin:0 0 8px; font-weight:600}
+  .row{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+  .row label{width:64px; font-size:12.5px; color:#555; flex:none}
+  input[type=text],select{
+    flex:1; min-width:0; padding:5px 7px; border:1px solid var(--line); border-radius:4px;
+    font:inherit; font-size:12.5px; background:#fff; color:var(--ink)
+  }
+  input[type=range]{flex:1; min-width:0}
+  .val{width:44px; text-align:right; font-size:12px; color:#666; font-variant-numeric:tabular-nums}
+  .chk{display:flex; gap:10px; flex-wrap:wrap; font-size:12.5px; color:#555}
+  .chk label{display:flex; align-items:center; gap:4px; width:auto}
+  button{
+    font:inherit; font-size:12.5px; padding:6px 10px; border-radius:4px; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--ink)
+  }
+  button:hover{background:#f4f4f1}
+  button.primary{background:#111; color:#fff; border-color:#111}
+  button.primary:hover{background:#2a2a2a}
+  .btns{display:flex; gap:6px; flex-wrap:wrap}
+  .logos{display:flex; flex-wrap:wrap; gap:6px}
+  .logo-item{position:relative; border:1px solid var(--line); border-radius:4px; padding:4px 6px; font-size:11.5px; display:flex; align-items:center; gap:6px; background:#fdfdfb}
+  .logo-item img{height:16px; max-width:46px; object-fit:contain}
+  .logo-item button{border:none; padding:0 2px; font-size:14px; line-height:1; color:#bbb; background:none}
+  .logo-item button:hover{color:#c00; background:none}
+  .hint{font-size:11.5px; color:#9a9a96; line-height:1.5; margin-top:6px}
+  .drop{outline:2px dashed transparent; outline-offset:-6px; transition:outline-color .15s}
+  .drop.hot{outline-color:#111}
+  .est{font-size:12.5px; color:#444; background:#f7f7f4; border:1px solid var(--line); border-radius:4px; padding:7px 9px; margin-top:6px}
+  .est b{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header>
+  <h1>品牌水印</h1>
+  <span class="tag">离线 · 不上传 · 读 EXIF 自动匹配品牌</span>
+</header>
+
+<main>
+  <div class="left">
+    <div class="hd">照片</div>
+    <div class="files" id="files"></div>
+    <div style="padding:8px; border-top:1px solid var(--line); display:flex; gap:6px; flex-wrap:wrap">
+      <button id="btnAdd">添加照片</button>
+      <button id="btnClear">清空</button>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/tiff" multiple hidden>
+    </div>
+  </div>
+
+  <div class="stage drop" id="stage">
+    <div class="canvas-wrap" id="wrap">
+      <div class="empty" id="empty">把照片拖到这里，或点左下「添加照片」</div>
+      <canvas id="preview" hidden></canvas>
+    </div>
+    <div class="status" id="status">支持 JPEG / PNG / WebP，全部在本机处理</div>
+  </div>
+
+  <div class="right">
+    <div class="grp">
+      <h2>品牌 / 机型</h2>
+      <div class="row"><label>品牌</label><select id="brand" autocomplete="off"></select></div>
+      <div class="row"><label>机型</label><input type="text" id="model" list="modelList" autocomplete="off" placeholder="自动读取"><datalist id="modelList"></datalist></div>
+      <div class="row"><label>镜头</label><input type="text" id="lens" autocomplete="off" placeholder="自动读取"></div>
+      <div class="row"><label>参数</label><input type="text" id="tpl" autocomplete="off" value="{focal} · {aperture} · {shutter} · {iso}"></div>
+      <div class="chk">
+        <label><input type="checkbox" id="cLens" checked>镜头</label>
+        <label><input type="checkbox" id="cMeta" checked>参数</label>
+        <label><input type="checkbox" id="cDate" checked>日期</label>
+        <label><input type="checkbox" id="cBrand" checked>标识</label>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>版式</h2>
+      <div class="row"><label>白边</label><input type="range" id="border" min="5" max="100" value="35"><span class="val" id="vBorder">3.5%</span></div>
+      <div class="row"><label>字号</label><input type="range" id="scale" min="50" max="200" value="100"><span class="val" id="vScale">100%</span></div>
+      <div class="row"><label>标识</label><input type="range" id="seal" min="60" max="260" value="150"><span class="val" id="vSeal">150%</span></div>
+    </div>
+
+    <div class="grp">
+      <h2>输出</h2>
+      <div class="row"><label>质量</label><input type="range" id="quality" min="60" max="100" value="92"><span class="val" id="vQuality">92</span></div>
+      <div class="est" id="est">预计大小：—</div>
+      <div class="btns" style="margin-top:8px">
+        <button class="primary" id="btnExportOne">导出当前</button>
+        <button id="btnExportAll">导出全部</button>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>品牌标识</h2>
+      <div class="logos" id="logoList"></div>
+      <div class="btns" style="margin-top:8px">
+        <button id="btnLogo">导入标志…</button>
+        <input type="file" id="logoInput" accept="image/*,.svg" hidden>
+      </div>
+      <div class="hint">SVG / PNG 都行，透明底最好。导入时选择对应品牌，之后按 EXIF 自动调用；没有标志时自动用文字字标。</div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ============================== 品牌数据 ============================== */
+const BRANDS = {
+  nikon:{name:"Nikon",mark:"Nikon",track:0.02,style:"sans"},
+  sony:{name:"Sony",mark:"SONY",track:0.17,style:"sans"},
+  canon:{name:"Canon",mark:"Canon",track:0.02,style:"serif"},
+  fujifilm:{name:"Fujifilm",mark:"FUJIFILM",track:0.04,style:"sans"},
+  panasonic:{name:"Lumix",mark:"LUMIX",track:0.12,style:"sans"},
+  om:{name:"OM System",mark:"OM SYSTEM",track:0.10,style:"sans"},
+  leica:{name:"Leica",mark:"LEICA",track:0.10,style:"serif"},
+  pentax:{name:"Pentax",mark:"PENTAX",track:0.06,style:"sans"},
+  ricoh:{name:"Ricoh",mark:"RICOH",track:0.08,style:"sans"},
+  hasselblad:{name:"Hasselblad",mark:"HASSELBLAD",track:0.06,style:"sans"},
+  dji:{name:"DJI",mark:"DJI",track:0.06,style:"sans"},
+  sigma:{name:"Sigma",mark:"SIGMA",track:0.06,style:"sans"},
+  apple:{name:"iPhone",mark:"iPhone",track:0.02,style:"sans"},
+  google:{name:"Google",mark:"PIXEL",track:0.10,style:"sans"},
+  unknown:{name:"",mark:"",track:0,style:"sans"}
+};
+
+const BRAND_KEYS = [
+  ["nikon",["NIKON"]],["sony",["SONY","ILCE","ILME","ILCA"]],["canon",["CANON"]],
+  ["fujifilm",["FUJI"]],["panasonic",["PANASONIC","LUMIX","DC-"]],
+  ["om",["OLYMPUS","OM DIGITAL","OM SYSTEM"]],["leica",["LEICA"]],["pentax",["PENTAX"]],
+  ["ricoh",["RICOH","GR III","GR IV"]],["hasselblad",["HASSELBLAD"]],["dji",["DJI"]],
+  ["sigma",["SIGMA"]],["apple",["APPLE","IPHONE"]],["google",["GOOGLE","PIXEL"]]
+];
+
+const COMMON_MODELS = {
+  nikon:["Z6III","Z6II","Z6","Z7II","Z7","Z8","Z9","Z5II","Z5","Z50II","Z50","Zf","Zfc","D850","D780","D750","D500"],
+  sony:["α7C II","α7C","α7 IV","α7R V","α7S III","α1","α9 III","α6700","α6600","ZV-E1","FX3","FX30"],
+  canon:["EOS R5","EOS R5 Mark II","EOS R6","EOS R6 Mark II","EOS R8","EOS R50","EOS R3","EOS 5D Mark IV"],
+  fujifilm:["X-T5","X-T4","X-H2","X-H2S","X100VI","X100V","X-S20","X-Pro3","GFX100 II","GFX50S II"],
+  panasonic:["S5 II","S5","S1R","GH7","GH6","G9 II"],
+  om:["OM-1","OM-1 Mark II","OM-5","E-M1 Mark III"],
+  leica:["Q3","M11","SL3","Q2"],
+  pentax:["K-3 Mark III","K-1 Mark II","K70"],
+  ricoh:["GR III","GR IIIx","GR IV"],
+  hasselblad:["X2D 100C","907X"],
+  dji:["Mavic 3","Air 3"],
+  sigma:["fp L","fp"],
+  apple:["iPhone 16 Pro","iPhone 15 Pro","iPhone 15"],
+  google:["Pixel 9 Pro","Pixel 8 Pro"]
+};
+
+/* 内置标志：构建时注入为 data URI */
+const BUILTIN_LOGOS = __LOGOS__;   /* { brand: {uri, seal:true|false, aspect:number} } */
+
+/* ============================== EXIF ============================== */
+function parseTiff(dv, tiffStart){
+  const le = dv.getUint16(tiffStart) === 0x4949;
+  const u16 = o => dv.getUint16(o, le);
+  const u32 = o => dv.getUint32(o, le);
+  if (u16(tiffStart + 2) !== 0x002A) return null;
+  const out = {};
+
+  function readIFD(off, into){
+    off = tiffStart + off;
+    if (off + 2 > dv.byteLength) return;
+    const n = u16(off);
+    for (let i = 0; i < n; i++){
+      const e = off + 2 + i * 12;
+      if (e + 12 > dv.byteLength) return;
+      const tag = u16(e), type = u16(e + 2), count = u32(e + 4);
+      const sizeOf = {1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8}[type] || 1;
+      const bytes = sizeOf * count;
+      let valOff = bytes <= 4 ? e + 8 : tiffStart + u32(e + 8);
+      const readAscii = () => {
+        let s = "";
+        for (let k = 0; k < count; k++){
+          const c = dv.getUint8(valOff + k);
+          if (c === 0) break;
+          s += String.fromCharCode(c);
+        }
+        return s.trim();
+      };
+      const readShort = () => u16(valOff);
+      const readLong = () => u32(valOff);
+      const readRational = () => {
+        const num = u32(valOff), den = u32(valOff + 4);
+        return den ? num / den : 0;
+      };
+      if (tag === 0x010F) into.make = readAscii();
+      else if (tag === 0x0110) into.model = readAscii();
+      else if (tag === 0x0112) into.orientation = readShort();
+      else if (tag === 0x0132) into.dateAlt = readAscii();
+      else if (tag === 0x8769) into._exifIfd = readLong();
+      else if (tag === 0x9003) into.date = readAscii();
+      else if (tag === 0x8827) into.iso = readShort();
+      else if (tag === 0x829A) into.exposure = readRational();
+      else if (tag === 0x829D) into.fnumber = readRational();
+      else if (tag === 0x920A) into.focal = readRational();
+      else if (tag === 0xA405) into.focal35 = readShort();
+      else if (tag === 0xA434) into.lens = readAscii();
+    }
+  }
+
+  readIFD(u32(tiffStart + 4), out);
+  if (out._exifIfd) {
+    const sub = {};
+    readIFD(out._exifIfd, sub);
+    Object.assign(out, sub, {make: out.make, model: out.model, _exifIfd: out._exifIfd});
+  }
+  return out;
+}
+
+function readExif(buf){
+  const dv = new DataView(buf);
+  try{
+    if (dv.getUint16(0) === 0xFFD8){           // JPEG
+      let off = 2;
+      while (off + 4 < dv.byteLength){
+        if (dv.getUint8(off) !== 0xFF){ off++; continue; }
+        const marker = dv.getUint8(off + 1);
+        if (marker === 0xD8 || marker === 0x01 || (marker >= 0xD0 && marker <= 0xD7)){ off += 2; continue; }
+        if (marker === 0xDA) break;
+        const len = dv.getUint16(off + 2);
+        if (marker === 0xE1 && dv.getUint32(off + 4) === 0x45786966){
+          return parseTiff(dv, off + 10);
+        }
+        off += 2 + len;
+      }
+      return null;
+    }
+    if (dv.getUint32(0) === 0x89504E47){        // PNG
+      let off = 8;
+      while (off + 8 <= dv.byteLength){
+        const len = dv.getUint32(off);
+        const type = dv.getUint32(off + 4);
+        if (type === 0x65584966) return parseTiff(dv, off + 8);  // eXIf
+        if (type === 0x49454E44) break;
+        off += 12 + len;
+      }
+    }
+  }catch(e){ console.warn(e); }
+  return null;
+}
+
+/* ============================== 机型归一化 ============================== */
+const ROMAN = {2:"II",3:"III",4:"IV",5:"V",6:"VI",7:"VII"};
+const roman = n => ROMAN[n] || String(n);
+
+function normModel(brand, raw){
+  let m = (raw || "").trim().replace(/\s+/g," ");
+  if (!m) return "";
+  if (brand === "nikon"){
+    m = m.replace(/^nikon( corporation)?\s*/i, "");
+    m = m.replace(/^(Z\s*\d+)_(\d)$/i, (_,a,b)=>a.replace(/\s+/g,"") + roman(+b));
+    return m.trim();
+  }
+  if (brand === "sony"){
+    m = m.replace(/^(ILCE|ILME|ILCA)-/i, "").trim();
+    const mo = /^(\d+)([A-Z]*)(?:M(\d))?$/.exec(m);
+    if (mo) return "α" + mo[1] + mo[2] + (mo[3] ? " " + roman(+mo[3]) : "");
+    return m;
+  }
+  if (brand === "canon"){
+    m = m.replace(/^canon\s*/i, "").trim();
+    m = m.replace(/\bmark\s*(II|III|IV|V)\b/gi, (_, r) => "Mark " + r.toUpperCase());
+    m = m.replace(/m(\d)$/i, (_, n) => " Mark " + roman(+n));
+    return m.replace(/\s+/g," ").trim();
+  }
+  if (brand === "fujifilm") return m.replace(/^fujifilm\s*/i, "").trim();
+  if (brand === "panasonic"){
+    m = m.replace(/^DC-/i, "").trim();
+    m = m.replace(/M(\d)$/i, (_, n) => " " + roman(+n));
+    return m.trim();
+  }
+  if (brand === "om"){
+    m = m.replace(/^(OLYMPUS|OM DIGITAL SOLUTIONS|OM SYSTEM)\s*/i, "").trim();
+    m = m.replace(/^OM-?\s*/i, "OM-");
+    return m.replace(/mark\s*(II|III|IV)/gi, (_, r) => "Mark " + r.toUpperCase()).trim();
+  }
+  if (["leica","pentax","ricoh","hasselblad","dji","sigma","apple","google"].includes(brand)){
+    return m.replace(/^(LEICA CAMERA AG|LEICA|PENTAX|RICOH IMAGING|HASSELBLAD|DJI|SIGMA|APPLE|GOOGLE)\s*/i, "").trim();
+  }
+  return m;
+}
+
+function detectBrand(make, model){
+  const s = ((make || "") + " " + (model || "")).toUpperCase();
+  for (const [k, keys] of BRAND_KEYS) if (keys.some(x => s.includes(x))) return k;
+  return "unknown";
+}
+
+function fmtShutter(v){
+  if (!v || v <= 0) return "";
+  if (v >= 1) return (+v.toFixed(1)) + "s";
+  return "1/" + Math.round(1 / v) + "s";
+}
+
+function metaFromExif(ex, fallbackName){
+  const meta = {make:"", model:"", rawModel:"", lens:"", focal:"", aperture:"", shutter:"", iso:"", date:""};
+  if (ex){
+    meta.make = ex.make || "";
+    meta.rawModel = ex.model || "";
+    meta.lens = ex.lens || "";
+    if (ex.focal){
+      meta.focal = Math.round(ex.focal) + "mm";
+      if (ex.focal35 && Math.abs(ex.focal35 - ex.focal) > 0.6) meta.focal += ` (${Math.round(ex.focal35)}mm)`;
+    }
+    if (ex.fnumber) meta.aperture = "f/" + (Math.round(ex.fnumber * 10) / 10);
+    if (ex.exposure) meta.shutter = fmtShutter(ex.exposure);
+    if (ex.iso) meta.iso = "ISO" + ex.iso;
+    const d = ex.date || ex.dateAlt || "";
+    const mm = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2})/.exec(d);
+    if (mm) meta.date = `${mm[1]}-${mm[2]}-${mm[3]} ${mm[4]}:${mm[5]}`;
+  }
+  meta.brand = detectBrand(meta.make, meta.rawModel);
+  meta.detectedBrand = meta.brand;
+  return meta;
+}
+
+/* ============================== 状态 ============================== */
+const state = {
+  files: [], cur: -1, meta: null, bitmap: null, exif: null,
+  opts: {border:0.035, scale:1, seal:1.5, template:"{focal} · {aperture} · {shutter} · {iso}",
+         showLens:true, showMeta:true, showDate:true, showBrand:true, quality:92},
+  modelOverride: "", lensOverride: "",
+  logos: JSON.parse(localStorage.getItem("bw_logos") || "{}")   // brand -> {uri, seal}
+};
+
+/* ============================== 渲染 ============================== */
+const measureCtx = document.createElement("canvas").getContext("2d");
+
+function fontOf(kind, size, style){
+  const fam = style === "serif" ? '"Times New Roman", Georgia, serif' : '"Segoe UI", Arial, "Microsoft YaHei UI", sans-serif';
+  return `${kind === "bold" ? 700 : 400} ${size}px ${fam}`;
+}
+
+function measure(s, font){
+  measureCtx.font = font;
+  const m = measureCtx.measureText(s);
+  return {w:m.width, a:m.actualBoundingBoxAscent || 0, d:m.actualBoundingBoxDescent || 0};
+}
+
+function drawTracked(ctx, s, x, y, track){
+  if (!track || s.length < 2) { ctx.fillText(s, x, y); return; }
+  let cx = x;
+  for (const ch of s){ ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + track; }
+}
+
+async function logoFor(brand){
+  const custom = state.logos[brand];
+  const item = custom || BUILTIN_LOGOS[brand];
+  if (!item) return null;
+  const img = new Image();
+  img.src = item.uri;
+  try { await img.decode(); } catch(e){ return null; }
+  return {img, seal: !!item.seal};
+}
+
+async function render(bitmap, meta, opts, logo){
+  const W = bitmap.width, H = bitmap.height, short = Math.min(W, H);
+  const margin = Math.max(6, Math.round(short * opts.border));
+  const b = BRANDS[meta.brand] || BRANDS.unknown;
+
+  const model = opts.modelOverride || normModel(meta.brand, meta.rawModel) || meta.rawModel || "未知";
+  const title = (b.name && model.toLowerCase().startsWith(b.name.toLowerCase()))
+      ? model : (b.name ? b.name + " " + model : model);
+  const lensline = opts.showLens ? (opts.lensOverride || meta.lens) : "";
+  let params = opts.showMeta ? opts.template
+      .replace("{focal}", meta.focal).replace("{aperture}", meta.aperture)
+      .replace("{shutter}", meta.shutter).replace("{iso}", meta.iso)
+      .replace("{make}", meta.make).replace("{lens}", meta.lens).trim() : "";
+  params = params.replace(/\s*·\s*(·\s*)+/g, " · ").replace(/^[·\s]+|[·\s]+$/g, "");
+  const metaline = [params, opts.showDate ? meta.date : ""].filter(Boolean).join(" · ");
+
+  let ts = Math.max(10, Math.round(short * 0.021 * opts.scale));
+  let f1, f2, f3, m1, m2, m3, leftW, markFont, markW;
+  for (;;){
+    f1 = fontOf("bold", ts, "sans");
+    f2 = fontOf("reg", Math.max(8, Math.round(ts * 0.62)), "sans");
+    f3 = fontOf("reg", Math.max(8, Math.round(ts * 0.55)), "sans");
+    m1 = measure(title, f1);
+    m2 = lensline ? measure(lensline, f2) : {w:0,a:0,d:0};
+    m3 = metaline ? measure(metaline, f3) : {w:0,a:0,d:0};
+    leftW = Math.max(m1.w, m2.w, m3.w);
+    markFont = fontOf("bold", Math.max(10, Math.round(ts * 1.12)), b.style);
+    markW = b.mark ? measure(b.mark, markFont).w + b.track * ts * (b.mark.length - 1) : 0;
+    if (leftW + markW + ts * 2 <= W || !b.mark) break;
+    if (ts <= 10) break;
+    ts = Math.round(ts * 0.94);
+  }
+
+  const h1 = m1.a + m1.d, h2 = lensline ? m2.a + m2.d : 0, h3 = metaline ? m3.a + m3.d : 0;
+  const gap = Math.round(ts * 0.5);
+  const blockH = h1 + (lensline ? gap + h2 : 0) + (metaline ? gap + h3 : 0);
+
+  const padTop = Math.round(margin * 0.95), padBottom = Math.round(margin * 1.15);
+  let logoH = 0, logoW = 0;
+  if (logo){
+    logoH = Math.round(blockH * (logo.seal ? opts.seal : opts.seal * 0.35));
+    logoW = Math.round(logo.img.width * logoH / logo.img.height);
+  }
+  const innerH = Math.max(blockH, logoH);
+  const band = padTop + innerH + padBottom;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W + margin * 2;
+  canvas.height = H + margin + band;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, margin, margin);
+
+  const bandTop = margin + H + padTop;
+  let y = bandTop + (innerH - blockH) / 2;
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#141414";
+  ctx.font = f1; ctx.fillText(title, margin, y + m1.a); y += h1;
+  if (lensline){
+    y += gap; ctx.fillStyle = "#575757"; ctx.font = f2;
+    ctx.fillText(lensline, margin, y + m2.a); y += h2;
+  }
+  if (metaline){
+    y += gap; ctx.fillStyle = "#8f8f8f"; ctx.font = f3;
+    ctx.fillText(metaline, margin, y + m3.a);
+  }
+
+  if (logo && logoH){
+    ctx.drawImage(logo.img, margin + W - logoW, bandTop + (innerH - logoH) / 2, logoW, logoH);
+  } else if (b.mark && opts.showBrand){
+    const mm = measure(b.mark, markFont);
+    const mh = mm.a + mm.d;
+    ctx.fillStyle = "#1a1a1a";
+    ctx.font = markFont;
+    drawTracked(ctx, b.mark, margin + W - markW, bandTop + (innerH - mh) / 2 + mm.a, b.track * ts);
+  }
+  return canvas;
+}
+
+/* ============================== 界面 ============================== */
+const $ = id => document.getElementById(id);
+
+function fillBrandSelect(){
+  const sel = $("brand");
+  sel.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = "auto"; auto.textContent = "自动（读 EXIF）";
+  sel.appendChild(auto);
+  for (const k in BRANDS){
+    if (k === "unknown") continue;
+    const o = document.createElement("option");
+    o.value = k; o.textContent = BRANDS[k].name || k;
+    sel.appendChild(o);
+  }
+  sel.value = "auto";
+}
+
+function fillModelList(brand){
+  const dl = $("modelList");
+  dl.innerHTML = "";
+  (COMMON_MODELS[brand] || []).forEach(m => {
+    const o = document.createElement("option");
+    o.value = m; dl.appendChild(o);
+  });
+}
+
+function refreshLogoList(){
+  const box = $("logoList");
+  box.innerHTML = "";
+  const all = {...BUILTIN_LOGOS, ...state.logos};
+  const keys = Object.keys(all);
+  if (!keys.length){ box.innerHTML = '<span class="hint">还没有标志</span>'; return; }
+  keys.forEach(brand => {
+    const item = all[brand];
+    const div = document.createElement("div");
+    div.className = "logo-item";
+    div.innerHTML = `<img src="${item.uri}" alt=""><span>${BRANDS[brand] ? (BRANDS[brand].name || brand) : brand}${item.seal ? " · 完整标" : " · 字标"}</span>`;
+    if (state.logos[brand]){
+      const del = document.createElement("button");
+      del.textContent = "×";
+      del.title = "移除此自定义标志";
+      del.onclick = () => { delete state.logos[brand]; saveLogos(); refreshLogoList(); schedulePreview(); };
+      div.appendChild(del);
+    }
+    box.appendChild(div);
+  });
+}
+
+function saveLogos(){
+  try { localStorage.setItem("bw_logos", JSON.stringify(state.logos)); } catch(e){ alert("自定义标志太大，浏览器存不下，本次仍可使用但刷新后失效"); }
+}
+
+function setStatus(t){ $("status").textContent = t; }
+
+function renderFileList(){
+  const box = $("files");
+  box.innerHTML = "";
+  state.files.forEach((f, i) => {
+    const d = document.createElement("div");
+    d.className = "file" + (i === state.cur ? " on" : "");
+    d.innerHTML = `<span>${f.name}</span><small>${(f.size/1048576).toFixed(1)}M</small>`;
+    d.onclick = () => loadFile(i);
+    box.appendChild(d);
+  });
+}
+
+async function readExifOf(file){
+  if (file.size > 80 * 1024 * 1024) return null;
+  const head = await file.slice(0, Math.min(file.size, 4 * 1024 * 1024)).arrayBuffer();
+  return readExif(head);
+}
+
+async function loadFile(i){
+  state.cur = i;
+  const f = state.files[i];
+  renderFileList();
+  setStatus("读取中…");
+  const buf = await f.arrayBuffer();
+  state.exif = readExif(buf);
+  state.meta = metaFromExif(state.exif, f.name);
+
+  const blob = new Blob([buf], {type: f.type || "image/jpeg"});
+  const bmp = await createImageBitmap(blob);
+  state.bitmap = bmp;
+
+  const brandSel = $("brand");
+  brandSel.value = state.meta.brand === "unknown" ? "auto" : state.meta.brand;
+  fillModelList(state.meta.brand);
+  const auto = normModel(state.meta.brand, state.meta.rawModel);
+  $("model").value = state.modelOverride || auto;
+  $("lens").value = state.lensOverride || state.meta.lens;
+
+  $("empty").hidden = true;
+  $("preview").hidden = false;
+  setStatus(`${f.name} · ${state.meta.make || "—"} ${state.meta.rawModel || ""} · ${bmp.width}×${bmp.height}`);
+  await schedulePreview();
+  updateEstimate();
+}
+
+let previewTimer = null;
+function schedulePreview(){
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(drawPreview, 80);
+}
+
+function currentOpts(){
+  return {
+    border: +$("border").value / 1000,
+    scale: +$("scale").value / 100,
+    seal: +$("seal").value / 100,
+    template: $("tpl").value,
+    showLens: $("cLens").checked,
+    showMeta: $("cMeta").checked,
+    showDate: $("cDate").checked,
+    showBrand: $("cBrand").checked,
+    quality: +$("quality").value,
+    modelOverride: $("model").value.trim() && $("model").value.trim() !== normModel(state.meta?.brand, state.meta?.rawModel)
+        ? $("model").value.trim() : "",
+    lensOverride: $("lens").value.trim() && $("lens").value.trim() !== state.meta?.lens
+        ? $("lens").value.trim() : ""
+  };
+}
+
+async function drawPreview(){
+  if (!state.bitmap) return;
+  const opts = currentOpts();
+  const logo = await logoFor(state.meta.brand);
+  const canvas = await render(state.bitmap, state.meta, opts, logo);
+  state.outSize = {w: canvas.width, h: canvas.height};
+  const pv = $("preview");
+  pv.width = canvas.width; pv.height = canvas.height;
+  pv.getContext("2d").drawImage(canvas, 0, 0);
+}
+
+function updateEstimate(){
+  if (!state.bitmap) return;
+  const q = +$("quality").value / 100;
+  const bmp = state.bitmap;
+  const side = Math.min(700, Math.min(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = side; c.height = side;
+  c.getContext("2d").drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, side, side);
+  c.toBlob(blob => {
+    if (!blob) return;
+    const perPx = blob.size / (side * side);
+    const os = state.outSize || {w: bmp.width, h: bmp.height};
+    const kb = perPx * os.w * os.h / 1024;
+    $("est").innerHTML = `预计大小：<b>${(kb/1024).toFixed(1)} MB</b> · 输出 ${os.w}×${os.h}`;
+  }, "image/jpeg", q);
+}
+
+async function exportOne(i, quiet){
+  const f = state.files[i];
+  const buf = await f.arrayBuffer();
+  const bmp = await createImageBitmap(new Blob([buf], {type: f.type || "image/jpeg"}));
+  const ex = readExif(buf);
+  const meta = metaFromExif(ex, f.name);
+  if ($("brand").value !== "auto" && BRANDS[$("brand").value]) meta.brand = $("brand").value;
+  const opts = currentOpts();
+  const logo = await logoFor(meta.brand);
+  const canvas = await render(bmp, meta, opts, logo);
+  const q = +$("quality").value / 100;
+  const blob = await new Promise(r => canvas.toBlob(r, "image/jpeg", q));
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = f.name.replace(/\.[^.]+$/, "") + "_wm.jpg";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  if (!quiet) setStatus(`已导出 ${a.download}`);
+}
+
+/* ============================== 事件 ============================== */
+function addFiles(list){
+  const ok = [...list].filter(f => /^image\/(jpeg|png|webp|tiff)$/.test(f.type) || /\.(jpe?g|png|webp|tiff?)$/i.test(f.name));
+  if (!ok.length) return;
+  const start = state.files.length;
+  state.files.push(...ok);
+  renderFileList();
+  if (state.cur < 0) loadFile(start);
+  else setStatus(`已添加 ${ok.length} 张`);
+}
+
+$("btnAdd").onclick = () => $("fileInput").click();
+$("fileInput").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+$("btnClear").onclick = () => {
+  state.files = []; state.cur = -1; state.bitmap = null;
+  renderFileList(); $("preview").hidden = true; $("empty").hidden = false;
+  $("est").textContent = "预计大小：—"; setStatus("支持 JPEG / PNG / WebP，全部在本机处理");
+};
+
+["dragenter","dragover"].forEach(t => $("stage").addEventListener(t, e => {
+  e.preventDefault(); $("stage").classList.add("hot");
+}));
+["dragleave","drop"].forEach(t => $("stage").addEventListener(t, e => {
+  e.preventDefault(); $("stage").classList.remove("hot");
+}));
+$("stage").addEventListener("drop", e => addFiles(e.dataTransfer.files));
+
+$("brand").onchange = () => {
+  if (!state.meta) return;
+  const v = $("brand").value;
+  state.meta.brand = (v === "auto") ? (state.meta.detectedBrand || "unknown") : v;
+  fillModelList(state.meta.brand);
+  schedulePreview();
+};
+
+["border","scale","seal","tpl","cLens","cMeta","cDate","cBrand"].forEach(id => {
+  $(id).addEventListener("input", () => { updateLabels(); schedulePreview(); updateEstimate(); });
+});
+$("quality").addEventListener("input", () => { updateLabels(); updateEstimate(); });
+
+function updateLabels(){
+  $("vBorder").textContent = (+$("border").value / 10).toFixed(1) + "%";
+  $("vScale").textContent = $("scale").value + "%";
+  $("vSeal").textContent = $("seal").value + "%";
+  $("vQuality").textContent = $("quality").value;
+}
+
+$("model").addEventListener("input", schedulePreview);
+$("lens").addEventListener("input", schedulePreview);
+
+$("btnExportOne").onclick = () => { if (state.cur >= 0) exportOne(state.cur); };
+$("btnExportAll").onclick = async () => {
+  if (!state.files.length) return;
+  for (let i = 0; i < state.files.length; i++){
+    setStatus(`正在导出 ${i+1}/${state.files.length}…`);
+    await exportOne(i, true);
+  }
+  setStatus(`已导出 ${state.files.length} 张`);
+};
+
+$("btnLogo").onclick = () => $("logoInput").click();
+$("logoInput").onchange = async e => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  const brand = prompt(`导入「${file.name}」\n绑定到哪个品牌？填品牌代号：\n${Object.keys(BRANDS).filter(k=>k!=="unknown").join(" / ")}`, state.meta?.brand || "nikon");
+  if (!brand) return;
+  const key = brand.trim().toLowerCase();
+  if (!BRANDS[key]) { alert("没有这个品牌代号"); return; }
+  const uri = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(file); });
+  state.logos[key] = {uri, seal: !/wordmark|字标/i.test(file.name)};
+  saveLogos(); refreshLogoList(); schedulePreview();
+};
+
+/* ============================== 启动 ============================== */
+fillBrandSelect();
+fillModelList("nikon");
+refreshLogoList();
+updateLabels();
+</script>
+</body>
+</html>
