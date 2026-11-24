@@ -124,6 +124,7 @@ logos/
 ```
 
 优先级：`<品牌>-seal.*` → `<品牌>-wordmark.*` → `<品牌>-logo.*` → `<品牌>.*`
+
 来源清单见 [logos/SOURCES.md](logos/SOURCES.md)，命名规则见 [logos/README.md](logos/README.md)。
 
 ---

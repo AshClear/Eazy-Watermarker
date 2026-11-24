@@ -19,7 +19,8 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install pillow svglib reportlab rlpycairo
+          # 校验作业不需要 rlpycairo（Linux 上它要系统 cairo，容易装不上）
+          pip install pillow svglib reportlab
 
       - name: Byte-compile sources
         run: python -m compileall -q src
@@ -55,6 +56,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pillow svglib reportlab rlpycairo pyinstaller
+
+      - name: Self test (exercises the SVG logo path)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force logos | Out-Null
+          Copy-Item docs/test-logo.svg logos/nikon-wordmark.svg -Force
+          python src/gui.py --selftest
+          Remove-Item logos/nikon-wordmark.svg -Force
 
       - name: Build exe
         run: |

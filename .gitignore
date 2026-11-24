@@ -32,3 +32,6 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+# 自检产物
+_selftest.jpg
